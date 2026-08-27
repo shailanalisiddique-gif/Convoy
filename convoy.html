@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convoy — Find your next ride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt: #121317;
+    --asphalt-2: #1C1E24;
+    --asphalt-3: #262932;
+    --line: #34373F;
+    --amber: #FF8A1E;
+    --amber-2: #FFB35C;
+    --amber-dim: #C96B14;
+    --red: #E8432B;
+    --paper: #F2EFE9;
+    --muted: #9A9DA6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--asphalt);
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Bebas Neue',sans-serif;
+    letter-spacing:0.5px;
+    font-weight:400;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  .lane{
+    height:2px;
+    background-image: repeating-linear-gradient(90deg, var(--amber) 0 24px, transparent 24px 44px);
+    background-size:68px 2px;
+    opacity:0.55;
+    margin:0;
+    animation: drift 3.2s linear infinite;
+  }
+  @keyframes drift{ from{background-position:0 0;} to{background-position:-68px 0;} }
+  @media (prefers-reduced-motion: reduce){ .lane{animation:none;} }
+
+  header{
+    position:sticky; top:0; z-index:30;
+    background:rgba(18,19,23,0.9);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    max-width:1080px; margin:0 auto; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .logo{display:flex; align-items:center; gap:10px;}
+  .logo h1{font-size:26px; margin:0; color:var(--paper);}
+  .logo h1 span{color:var(--amber);}
+  .tabs{display:flex; gap:4px; flex-wrap:wrap;}
+  .tab{
+    background:none; border:none; color:var(--muted); font-family:'Inter';
+    font-weight:700; font-size:13.5px; padding:8px 13px; border-radius:7px; cursor:pointer;
+    transition:background 0.15s, color 0.15s;
+  }
+  .tab:hover{color:var(--paper);}
+  .tab.active{color:var(--asphalt); background:var(--amber);}
+
+  .hero{
+    max-width:1080px; margin:0 auto; padding:58px 20px 30px;
+    position:relative;
+  }
+  .hero-bg{
+    position:absolute; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+  }
+  .hero-bg::before{
+    content:''; position:absolute; top:-120px; left:50%; transform:translateX(-38%);
+    width:640px; height:420px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,138,30,0.16), transparent 70%);
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    color:var(--amber); font-family:'JetBrains Mono'; font-size:12px;
+    letter-spacing:2px; text-transform:uppercase; margin-bottom:14px;
+  }
+  .eyebrow::before{content:''; width:18px; height:2px; background:var(--amber); display:inline-block;}
+  .hero h2{font-size:60px; line-height:0.94; margin:0 0 14px; max-width:640px;}
+  .hero p{color:var(--muted); font-size:16px; max-width:480px; line-height:1.55; margin:0 0 20px;}
+  .stat-row{display:flex; gap:28px; margin-top:22px; flex-wrap:wrap;}
+  .stat{font-family:'JetBrains Mono';}
+  .stat b{display:block; font-size:22px; color:var(--amber);}
+  .stat span{font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase;}
+
+  .snapshots{display:flex; gap:8px; margin-top:26px; flex-wrap:wrap;}
+  .snapshots .snap-label{width:100%; font-family:'JetBrains Mono'; font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:2px;}
+  .snap-thumb{
+    width:64px; height:64px; border-radius:10px; object-fit:cover;
+    border:1px solid var(--line); cursor:pointer; transition:transform 0.15s;
+  }
+  .snap-thumb:hover{transform:translateY(-3px);}
+
+  .wrap{max-width:1080px; margin:0 auto; padding:30px 20px 90px;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+  .section-head h3{font-size:30px; margin:0;}
+  .mile{color:var(--amber); font-family:'JetBrains Mono'; font-size:12px; letter-spacing:1px;}
+
+  .filter-row{display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap;}
+  input, select, textarea{
+    background:var(--asphalt-2); border:1px solid var(--line); color:var(--paper);
+    padding:10px 12px; border-radius:8px; font-family:'Inter'; font-size:14px;
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--amber); outline-offset:1px;}
+  .search{flex:1; min-width:180px;}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px;}
+  .card{
+    background:var(--asphalt-2); border:1px solid var(--line); border-radius:12px;
+    padding:18px; position:relative; overflow:hidden; transition:transform 0.15s, border-color 0.15s;
+  }
+  .card:hover{transform:translateY(-2px); border-color:#454952;}
+  .card::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--amber);
+  }
+  .card h4{margin:0 0 6px; font-size:19px; font-family:'Bebas Neue'; letter-spacing:0.3px;}
+  .card .meta{color:var(--muted); font-size:12.5px; margin:2px 0; display:flex; gap:6px; align-items:center;}
+  .card .desc{font-size:13.5px; color:#cfd0d5; margin-top:10px; line-height:1.5;}
+  .card .cover{width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:8px; margin-bottom:12px; display:block; background:var(--asphalt-3);}
+  .badge{
+    display:inline-block; font-family:'JetBrains Mono'; font-size:11px; color:var(--amber);
+    border:1px solid var(--amber-dim); padding:2px 8px; border-radius:100px; margin-top:10px;
+  }
+  .card-foot{display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);}
+  .rsvp-count{font-family:'JetBrains Mono'; font-size:12px; color:var(--muted);}
+  button.primary{
+    background:var(--amber); color:var(--asphalt); border:none; font-weight:700;
+    padding:9px 16px; border-radius:8px; cursor:pointer; font-size:13.5px; font-family:'Inter';
+    transition:background 0.15s, transform 0.1s;
+  }
+  button.primary:hover{background:var(--amber-2);}
+  button.primary:active{transform:scale(0.97);}
+  button.primary:disabled{background:var(--line); color:var(--muted); cursor:default;}
+  button.ghost{
+    background:none; border:1px solid var(--line); color:var(--paper);
+    padding:9px 16px; border-radius:8px; cursor:pointer; font-size:13.5px; font-family:'Inter';
+  }
+
+  .avatar{
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue'; font-size:15px; color:#141517; flex-shrink:0;
+  }
+
+  .panel{
+    background:var(--asphalt-2); border:1px solid var(--line); border-radius:14px; padding:24px;
+    max-width:520px; margin:0 auto;
+  }
+  .panel h3{margin-top:0;}
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px;}
+  .field label{font-size:12.5px; color:var(--muted); letter-spacing:0.3px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .empty{
+    text-align:center; padding:50px 20px; color:var(--muted); border:1px dashed var(--line); border-radius:12px;
+  }
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--paper); color:var(--asphalt); padding:10px 18px; border-radius:8px;
+    font-size:13.5px; font-weight:600; z-index:60; opacity:0; transition:opacity 0.25s;
+    pointer-events:none; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .you-tag{color:var(--amber); font-family:'JetBrains Mono'; font-size:11px;}
+  footer{text-align:center; padding:26px; color:var(--muted); font-size:12px;}
+
+  /* Feed — Instagram-style grid */
+  .feed-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:4px;}
+  .feed-tile{
+    position:relative; aspect-ratio:1; border-radius:6px; overflow:hidden; cursor:pointer;
+    background:var(--asphalt-3);
+  }
+  .feed-tile img, .feed-tile .vidmark{width:100%; height:100%; object-fit:cover; display:block;}
+  .feed-tile .vidmark{display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,#2a2d35,#1a1b20); font-size:30px;}
+  .feed-tile .caption-peek{
+    position:absolute; inset:0; background:rgba(15,16,19,0.0); opacity:0; transition:opacity 0.15s;
+    display:flex; align-items:flex-end; padding:10px; font-size:12px; color:#fff;
+  }
+  .feed-tile:hover .caption-peek{opacity:1; background:rgba(15,16,19,0.55);}
+  .feed-tile .heart-count{
+    position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.55); color:#fff; font-size:11px;
+    font-family:'JetBrains Mono'; padding:2px 6px; border-radius:100px; display:flex; align-items:center; gap:3px;
+  }
+
+  .lightbox{
+    position:fixed; inset:0; background:rgba(10,10,12,0.88); z-index:80;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lightbox-inner{
+    background:var(--asphalt-2); border:1px solid var(--line); border-radius:14px;
+    max-width:460px; width:100%; overflow:hidden;
+  }
+  .lightbox-media img, .lightbox-media video{width:100%; display:block; aspect-ratio:1; object-fit:cover; background:#000;}
+  .lightbox-body{padding:16px 18px;}
+  .lightbox-close{
+    position:absolute; top:16px; right:20px; background:none; border:none; color:#fff;
+    font-size:26px; cursor:pointer; line-height:1;
+  }
+  .like-row{display:flex; align-items:center; gap:10px; margin-top:8px;}
+  .heart-btn{
+    background:none; border:none; cursor:pointer; font-size:22px; padding:0; line-height:1;
+    filter:grayscale(1); transition:filter 0.15s, transform 0.1s;
+  }
+  .heart-btn.liked{filter:none; transform:scale(1.1);}
+
+  .media-picker{
+    display:flex; gap:10px; margin-bottom:14px;
+  }
+  .media-picker label.file-btn{
+    border:1px dashed var(--line); border-radius:8px; padding:10px 14px; font-size:13px;
+    color:var(--muted); cursor:pointer; flex:1; text-align:center;
+  }
+  .media-picker label.file-btn:hover{border-color:var(--amber); color:var(--paper);}
+  .preview-thumb{width:64px; height:64px; object-fit:cover; border-radius:8px; margin-top:8px; border:1px solid var(--line);}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.4;}
+
+  @media(max-width:560px){
+    .hero h2{font-size:40px;}
+    .row2{grid-template-columns:1fr;}
+    .tabs{gap:2px;}
+    .tab{padding:7px 9px; font-size:12px;}
+    .feed-grid{grid-template-columns:repeat(3, 1fr);}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 17.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM19 17.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="#FF8A1E" stroke-width="1.6"/><path d="M7.5 15l2-5h4l1.5 3M9.5 10H8M14 15l1.5-3.5L18 15" stroke="#F2EFE9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Con<span>voy</span></h1>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="feed">Feed</button>
+      <button class="tab" data-tab="rides">Rides</button>
+      <button class="tab" data-tab="riders">Riders</button>
+      <button class="tab" data-tab="profile">Join</button>
+    </div>
+  </div>
+</header>
+<div class="lane"></div>
+
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="eyebrow">Local · Free · No app required</div>
+  <h2>Find riders.<br>Share the road.</h2>
+  <p>Post a meetup, drop photos from the last ride, and find people near you who ride. No accounts to manage, no fees — just riders finding riders.</p>
+  <div class="stat-row">
+    <div class="stat"><b id="statRiders">0</b><span>Riders Listed</span></div>
+    <div class="stat"><b id="statRides">0</b><span>Rides Posted</span></div>
+    <div class="stat"><b id="statPosts">0</b><span>Photos & Clips</span></div>
+  </div>
+  <div class="snapshots" id="snapWrap" style="display:none;">
+    <div class="snap-label">From the road</div>
+    <div id="snapThumbs" style="display:flex; gap:8px;"></div>
+  </div>
+</div>
+<div class="lane"></div>
+
+<div class="wrap">
+
+  <!-- FEED TAB -->
+  <div id="tab-feed">
+    <div class="section-head">
+      <h3>The Feed</h3>
+      <span class="mile">MI.00 — PHOTOS & CLIPS</span>
+    </div>
+    <div class="filter-row">
+      <input class="search" id="feedSearch" placeholder="Filter by city...">
+      <button class="primary" onclick="showPostMedia()">+ New post</button>
+    </div>
+    <div id="feedGrid" class="feed-grid"></div>
+  </div>
+
+  <!-- RIDES TAB -->
+  <div id="tab-rides" style="display:none;">
+    <div class="section-head">
+      <h3>Upcoming Rides</h3>
+      <span class="mile">MI.01 — RIDE FEED</span>
+    </div>
+    <div class="filter-row">
+      <input class="search" id="rideSearch" placeholder="Filter by city or region...">
+      <button class="primary" onclick="showPostRide()">+ Post a ride</button>
+    </div>
+    <div id="ridesGrid" class="grid"></div>
+  </div>
+
+  <!-- RIDERS TAB -->
+  <div id="tab-riders" style="display:none;">
+    <div class="section-head">
+      <h3>Riders Nearby</h3>
+      <span class="mile">MI.02 — DIRECTORY</span>
+    </div>
+    <div class="filter-row">
+      <input class="search" id="riderSearch" placeholder="Filter by city or region...">
+    </div>
+    <div id="ridersGrid" class="grid"></div>
+  </div>
+
+  <!-- PROFILE / JOIN TAB -->
+  <div id="tab-profile" style="display:none;">
+    <div class="section-head">
+      <h3>Set Up Your Profile</h3>
+      <span class="mile">MI.03 — JOIN CONVOY</span>
+    </div>
+    <div class="panel">
+      <div class="field">
+        <label>Your name</label>
+        <input id="pName" placeholder="e.g. Sam Torres">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>City / area</label>
+          <input id="pCity" placeholder="e.g. Toronto, ON">
+        </div>
+        <div class="field">
+          <label>Riding style</label>
+          <select id="pStyle">
+            <option>Cruiser</option>
+            <option>Sportbike</option>
+            <option>Adventure / Dual-Sport</option>
+            <option>Touring</option>
+            <option>Naked / Standard</option>
+            <option>Scooter</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Bike (make & model)</label>
+        <input id="pBike" placeholder="e.g. Kawasaki Ninja 650">
+      </div>
+      <div class="field">
+        <label>Short bio (optional)</label>
+        <textarea id="pBio" rows="3" placeholder="Weekend rider, coffee stops mandatory."></textarea>
+      </div>
+      <button class="primary" style="width:100%;" onclick="saveProfile()">Save & list me</button>
+      <p style="color:var(--muted); font-size:12px; margin-top:12px; text-align:center;">Visible to everyone browsing Convoy — don't share more than you're comfortable with.</p>
+    </div>
+  </div>
+
+  <!-- POST RIDE MODAL AREA -->
+  <div id="tab-postride" style="display:none;">
+    <div class="section-head">
+      <h3>Post a Ride</h3>
+      <span class="mile">MI.04 — NEW MEETUP</span>
+    </div>
+    <div class="panel">
+      <div class="field">
+        <label>Ride title</label>
+        <input id="rTitle" placeholder="e.g. Sunday Coastal Loop">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>City / meeting area</label>
+          <input id="rCity" placeholder="e.g. Vancouver, BC">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input id="rDate" type="date">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Time</label>
+          <input id="rTime" type="time">
+        </div>
+        <div class="field">
+          <label>Meeting point</label>
+          <input id="rPoint" placeholder="e.g. Tim Hortons on 4th">
+        </div>
+      </div>
+      <div class="field">
+        <label>Organizer name</label>
+        <input id="rOrganizer" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label>Details</label>
+        <textarea id="rDesc" rows="3" placeholder="Route, pace, distance, anything riders should know."></textarea>
+      </div>
+      <div class="field">
+        <label>Cover photo (optional)</label>
+        <label class="file-btn">📷 Choose a photo<input type="file" accept="image/*" id="rPhoto" style="display:none;" onchange="previewImage(this,'rPhotoPreview')"></label>
+        <img id="rPhotoPreview" class="preview-thumb" style="display:none;">
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="ghost" style="flex:1;" onclick="cancelPostRide()">Cancel</button>
+        <button class="primary" style="flex:1;" onclick="saveRide()">Post ride</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST MEDIA (INSTAGRAM-STYLE) MODAL AREA -->
+  <div id="tab-postmedia" style="display:none;">
+    <div class="section-head">
+      <h3>New Post</h3>
+      <span class="mile">MI.05 — PHOTO / VIDEO</span>
+    </div>
+    <div class="panel">
+      <div class="field">
+        <label>Your name</label>
+        <input id="mAuthor" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label>City / area (optional)</label>
+        <input id="mCity" placeholder="e.g. Calgary, AB">
+      </div>
+
+      <div class="media-picker">
+        <label class="file-btn">📷 Upload a photo<input type="file" accept="image/*" id="mPhoto" style="display:none;" onchange="previewImage(this,'mPhotoPreview')"></label>
+      </div>
+      <img id="mPhotoPreview" class="preview-thumb" style="display:none;">
+
+      <div class="field">
+        <label>Or paste a video link (YouTube, Vimeo, or direct .mp4)</label>
+        <input id="mVideoUrl" placeholder="https://...">
+      </div>
+      <p class="hint">Photos are compressed automatically so the feed stays fast. Direct video file uploads aren't supported yet — paste a link instead. Use one or the other, not both.</p>
+
+      <div class="field" style="margin-top:6px;">
+        <label>Caption</label>
+        <textarea id="mCaption" rows="3" placeholder="Sunday morning, empty roads..."></textarea>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="ghost" style="flex:1;" onclick="cancelPostMedia()">Cancel</button>
+        <button class="primary" style="flex:1;" onclick="saveMediaPost()">Share</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="lane"></div>
+<footer>Convoy — a free, no-cost meetup board for riders. Data and photos shown here are visible to anyone using this page.</footer>
+<div class="toast" id="toast"></div>
+<div id="lightboxWrap"></div>
+
+<script>
+let riders = [];
+let rides = [];
+let posts = [];
+let myLikedPosts = [];
+let myName = null;
+let pendingRidePhoto = null;
+let pendingPostPhoto = null;
+
+const AVATAR_COLORS = ['#FF8A1E','#E8432B','#4E9F3D','#3D8BFD','#C96BFF','#FFD23D'];
+function avatarColor(name){
+  let h = 0;
+  for(let i=0;i<name.length;i++) h = name.charCodeAt(i) + ((h<<5)-h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+function initials(name){
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('');
+}
+function avatarHtml(name){
+  return `<div class="avatar" style="background:${avatarColor(name)};">${initials(name)}</div>`;
+}
+
+async function loadData(){
+  try{ const r = await window.storage.get('convoy_riders', true); riders = r ? JSON.parse(r.value) : []; }catch(e){ riders = []; }
+  try{ const r2 = await window.storage.get('convoy_rides', true); rides = r2 ? JSON.parse(r2.value) : []; }catch(e){ rides = []; }
+  try{ const r3 = await window.storage.get('convoy_posts', true); posts = r3 ? JSON.parse(r3.value) : []; }catch(e){ posts = []; }
+  try{ const r4 = await window.storage.get('convoy_my_likes', false); myLikedPosts = r4 ? JSON.parse(r4.value) : []; }catch(e){ myLikedPosts = []; }
+  render();
+}
+async function persistRiders(){ await window.storage.set('convoy_riders', JSON.stringify(riders), true); }
+async function persistRides(){ await window.storage.set('convoy_rides', JSON.stringify(rides), true); }
+async function persistPosts(){ await window.storage.set('convoy_posts', JSON.stringify(posts), true); }
+async function persistMyLikes(){ await window.storage.set('convoy_my_likes', JSON.stringify(myLikedPosts), false); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// TAB SWITCHING
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['feed','rides','riders','profile'].forEach(id=>{
+      document.getElementById('tab-'+id).style.display = (id===btn.dataset.tab)?'block':'none';
+    });
+    document.getElementById('tab-postride').style.display='none';
+    document.getElementById('tab-postmedia').style.display='none';
+  });
+});
+
+function hideAllPanels(){
+  document.querySelectorAll('#tab-feed, #tab-rides, #tab-riders, #tab-profile, #tab-postride, #tab-postmedia').forEach(el=>el.style.display='none');
+}
+function showPostRide(){ hideAllPanels(); document.getElementById('tab-postride').style.display='block'; }
+function showPostMedia(){ hideAllPanels(); document.getElementById('tab-postmedia').style.display='block'; }
+function cancelPostRide(){
+  hideAllPanels(); document.getElementById('tab-rides').style.display='block';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-tab="rides"]').classList.add('active');
+}
+function cancelPostMedia(){
+  hideAllPanels(); document.getElementById('tab-feed').style.display='block';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-tab="feed"]').classList.add('active');
+}
+
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = ()=>reject(new Error('Could not read image'));
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=>reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewImage(input, previewId){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('Please choose an image file'); return; }
+  try{
+    const dataUrl = await compressImage(file, 900, 0.72);
+    if(previewId === 'rPhotoPreview'){ pendingRidePhoto = dataUrl; }
+    else { pendingPostPhoto = dataUrl; }
+    const img = document.getElementById(previewId);
+    img.src = dataUrl; img.style.display = 'block';
+  }catch(e){ showToast('Could not process that image'); }
+}
+
+function isSafeUrl(url){
+  return /^https?:\/\//i.test(url.trim());
+}
+function videoEmbedHtml(url, square){
+  const style = square ? 'width:100%;aspect-ratio:1;border-radius:10px;' : 'width:100%;aspect-ratio:16/10;border-radius:8px;';
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+  if(yt){ return `<iframe src="https://www.youtube.com/embed/${yt[1]}" frameborder="0" allowfullscreen style="${style}"></iframe>`; }
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if(vimeo){ return `<iframe src="https://player.vimeo.com/video/${vimeo[1]}" frameborder="0" allowfullscreen style="${style}"></iframe>`; }
+  return `<video controls style="${style} object-fit:cover; background:#000;"><source src="${url}"></video>`;
+}
+
+async function saveProfile(){
+  const name = document.getElementById('pName').value.trim();
+  const city = document.getElementById('pCity').value.trim();
+  const style = document.getElementById('pStyle').value;
+  const bike = document.getElementById('pBike').value.trim();
+  const bio = document.getElementById('pBio').value.trim();
+  if(!name || !city){ showToast('Name and city are required'); return; }
+  riders = riders.filter(r=>r.name.toLowerCase() !== name.toLowerCase());
+  riders.push({name, city, style, bike, bio, joined: Date.now()});
+  myName = name;
+  try{ await persistRiders(); showToast('You are listed on Convoy 🏍️'); render();
+    document.querySelector('[data-tab="riders"]').click();
+  }catch(e){ showToast('Could not save — try again'); }
+}
+
+async function saveRide(){
+  const title = document.getElementById('rTitle').value.trim();
+  const city = document.getElementById('rCity').value.trim();
+  const date = document.getElementById('rDate').value;
+  const time = document.getElementById('rTime').value;
+  const point = document.getElementById('rPoint').value.trim();
+  const organizer = document.getElementById('rOrganizer').value.trim();
+  const desc = document.getElementById('rDesc').value.trim();
+  if(!title || !city || !date || !organizer){ showToast('Title, city, date and organizer are required'); return; }
+  rides.push({ id:'ride_'+Date.now(), title, city, date, time, point, organizer, desc, rsvps:[organizer], photo: pendingRidePhoto });
+  try{
+    await persistRides(); showToast('Ride posted!'); cancelPostRide();
+    ['rTitle','rCity','rDate','rTime','rPoint','rOrganizer','rDesc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('rPhotoPreview').style.display='none';
+    pendingRidePhoto = null;
+    render();
+  }catch(e){ showToast('Could not save — try again'); }
+}
+
+async function saveMediaPost(){
+  const author = document.getElementById('mAuthor').value.trim();
+  const city = document.getElementById('mCity').value.trim();
+  const videoUrl = document.getElementById('mVideoUrl').value.trim();
+  const caption = document.getElementById('mCaption').value.trim();
+  if(!author){ showToast('Your name is required'); return; }
+  if(!pendingPostPhoto && !videoUrl){ showToast('Add a photo or paste a video link'); return; }
+  let mediaType = 'image', media = pendingPostPhoto;
+  if(!pendingPostPhoto && videoUrl){
+    if(!isSafeUrl(videoUrl)){ showToast('Video link must start with http:// or https://'); return; }
+    mediaType = 'video'; media = videoUrl;
+  }
+  posts.unshift({ id:'post_'+Date.now(), author, city, caption, mediaType, media, likeCount:0, createdAt: Date.now() });
+  myName = myName || author;
+  try{
+    await persistPosts(); showToast('Posted to the feed 📸'); cancelPostMedia();
+    ['mAuthor','mCity','mVideoUrl','mCaption'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('mPhotoPreview').style.display='none';
+    pendingPostPhoto = null;
+    render();
+  }catch(e){ showToast('Could not save — try again'); }
+}
+
+async function joinRide(id){
+  const name = myName || prompt('Your name, so the organizer knows who\\'s coming:');
+  if(!name) return;
+  myName = name;
+  const ride = rides.find(r=>r.id===id);
+  if(!ride) return;
+  if(ride.rsvps.includes(name)){ showToast('You\\'re already in for this ride'); return; }
+  ride.rsvps.push(name);
+  try{ await persistRides(); showToast('You\\'re in! See you there 🏍️'); render(); }
+  catch(e){ showToast('Could not save — try again'); }
+}
+
+async function toggleLike(postId){
+  const post = posts.find(p=>p.id===postId);
+  if(!post) return;
+  const already = myLikedPosts.includes(postId);
+  if(already){
+    post.likeCount = Math.max(0, post.likeCount - 1);
+    myLikedPosts = myLikedPosts.filter(id=>id!==postId);
+  } else {
+    post.likeCount += 1;
+    myLikedPosts.push(postId);
+  }
+  try{ await persistPosts(); await persistMyLikes(); render(); renderLightbox(postId); }
+  catch(e){ showToast('Could not save like'); }
+}
+
+function openLightbox(postId){ renderLightbox(postId); }
+function closeLightbox(){ document.getElementById('lightboxWrap').innerHTML=''; }
+function renderLightbox(postId){
+  const post = posts.find(p=>p.id===postId);
+  if(!post) return;
+  const liked = myLikedPosts.includes(postId);
+  const mediaHtml = post.mediaType === 'image'
+    ? `<img src="${post.media}" alt="">`
+    : videoEmbedHtml(post.media, true);
+  const timeAgo = timeSince(post.createdAt);
+  document.getElementById('lightboxWrap').innerHTML = `
+    <div class="lightbox" onclick="if(event.target.classList.contains('lightbox'))closeLightbox()">
+      <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+      <div class="lightbox-inner">
+        <div class="lightbox-media">${mediaHtml}</div>
+        <div class="lightbox-body">
+          <div style="display:flex; align-items:center; gap:10px;">
+            ${avatarHtml(post.author)}
+            <div>
+              <div style="font-weight:700; font-size:14px;">${escapeHtml(post.author)}</div>
+              <div class="meta" style="margin:0;">${post.city?escapeHtml(post.city)+' · ':''}${timeAgo}</div>
+            </div>
+          </div>
+          ${post.caption? `<div class="desc" style="margin-top:12px;">${escapeHtml(post.caption)}</div>` : ''}
+          <div class="like-row">
+            <button class="heart-btn ${liked?'liked':''}" onclick="toggleLike('${post.id}')">❤️</button>
+            <span class="rsvp-count">${post.likeCount} ${post.likeCount===1?'like':'likes'}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function timeSince(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'just now';
+  const m = Math.floor(s/60); if(m<60) return m+'m ago';
+  const h = Math.floor(m/60); if(h<24) return h+'h ago';
+  const d = Math.floor(h/24); return d+'d ago';
+}
+
+function render(){
+  document.getElementById('statRiders').textContent = riders.length;
+  document.getElementById('statRides').textContent = rides.length;
+  document.getElementById('statPosts').textContent = posts.length;
+
+  renderSnapshots();
+  renderFeed();
+  renderRides();
+  renderRiders();
+}
+
+function renderSnapshots(){
+  const imagePosts = posts.filter(p=>p.mediaType==='image').slice(0,5);
+  const wrap = document.getElementById('snapWrap');
+  if(imagePosts.length===0){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  document.getElementById('snapThumbs').innerHTML = imagePosts.map(p=>
+    `<img class="snap-thumb" src="${p.media}" onclick="document.querySelector('[data-tab=feed]').click(); openLightbox('${p.id}')">`
+  ).join('');
+}
+
+function renderFeed(){
+  const q = (document.getElementById('feedSearch').value || '').toLowerCase();
+  const grid = document.getElementById('feedGrid');
+  const list = posts.filter(p => (p.city||'').toLowerCase().includes(q));
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">No posts yet${q?' for that area':''}. Share a photo from your last ride.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(p=>{
+    const inner = p.mediaType==='image'
+      ? `<img src="${p.media}" alt="">`
+      : `<div class="vidmark">▶️</div>`;
+    return `<div class="feed-tile" onclick="openLightbox('${p.id}')">
+      ${inner}
+      <div class="heart-count">❤️ ${p.likeCount}</div>
+      <div class="caption-peek">${escapeHtml((p.caption||p.author||'').slice(0,60))}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRides(){
+  const q = (document.getElementById('rideSearch').value || '').toLowerCase();
+  const grid = document.getElementById('ridesGrid');
+  const list = rides
+    .filter(r => r.city.toLowerCase().includes(q))
+    .sort((a,b)=> new Date(a.date+'T'+(a.time||'00:00')) - new Date(b.date+'T'+(b.time||'00:00')));
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">No rides posted yet${q?' for that area':''}. Be the first — post one above.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(r=>{
+    const dateStr = r.date ? new Date(r.date+'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '';
+    const already = myName && r.rsvps.includes(myName);
+    const cover = r.photo ? `<img class="cover" src="${r.photo}" alt="">` : '';
+    return `<div class="card">
+      ${cover}
+      <h4>${escapeHtml(r.title)}</h4>
+      <div class="meta">📍 ${escapeHtml(r.city)}${r.point? ' · '+escapeHtml(r.point):''}</div>
+      <div class="meta">🗓️ ${dateStr}${r.time? ' · '+r.time:''}</div>
+      <div class="desc">${escapeHtml(r.desc||'No extra details posted.')}</div>
+      <span class="badge">Organized by ${escapeHtml(r.organizer)}</span>
+      <div class="card-foot">
+        <span class="rsvp-count">${r.rsvps.length} riding</span>
+        <button class="primary" ${already?'disabled':''} onclick="joinRide('${r.id}')">${already?'You\\'re in':'Join ride'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRiders(){
+  const q = (document.getElementById('riderSearch').value || '').toLowerCase();
+  const grid = document.getElementById('ridersGrid');
+  const list = riders.filter(r => r.city.toLowerCase().includes(q));
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">No riders listed${q?' in that area':''} yet. Head to "Join" to add yourself.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(r=>`<div class="card">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+      ${avatarHtml(r.name)}
+      <h4 style="margin:0;">${escapeHtml(r.name)} ${myName===r.name?'<span class="you-tag">(you)</span>':''}</h4>
+    </div>
+    <div class="meta">📍 ${escapeHtml(r.city)}</div>
+    <div class="meta">🏍️ ${escapeHtml(r.bike||'—')}</div>
+    <span class="badge">${escapeHtml(r.style)}</span>
+    ${r.bio?`<div class="desc">${escapeHtml(r.bio)}</div>`:''}
+  </div>`).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+document.getElementById('feedSearch').addEventListener('input', renderFeed);
+document.getElementById('rideSearch').addEventListener('input', renderRides);
+document.getElementById('riderSearch').addEventListener('input', renderRiders);
+
+loadData();
+</script>
+</body>
+</html>
